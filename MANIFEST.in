@@ -1,0 +1,6 @@
+recursive-include swagman *
+include AUTHORS
+include CHANGELOG
+include LICENSE
+include README.rst
+include VERSION
