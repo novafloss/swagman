@@ -1,6 +1,2 @@
-recursive-include swagman *
-include AUTHORS
-include CHANGELOG
-include LICENSE
-include README.rst
-include VERSION
+include AUTHORS CHANGELOG LICENSE README.rst VERSION
+global-include swagman.py

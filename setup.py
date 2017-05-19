@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -39,7 +39,7 @@ setup(
             'zest.releaser'
         ],
     },
-    packages=find_packages(),
+    py_modules=['swagman'],
     entry_points={
         'console_scripts': [
             'swagman = swagman:main',
