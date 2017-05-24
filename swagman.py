@@ -466,14 +466,11 @@ class CollectionItemParser(dict):
             )
 
         for host in self.collection_parser._hosts:
-            url = url.replace(
+            self._url = url.replace(
                 '{}{}'.format(host, self.collection_parser.basePath),
                 ''
             )
-
-        self._url = url
-
-        return self._url
+            return self._url
 
 
 class CollectionParser(dict):
