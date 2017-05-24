@@ -84,25 +84,28 @@ class AttrDict(dict):
 
 class CollectionRequest(AttrDict):
 
+
     @property
-    def body_parameters(self):
+    def body_dict(self):
 
         if not self.body:
-            return []
+            return {}
 
         mode = self.body['mode']
         body = self.body[mode]
 
         if mode == 'urlencoded':
-            parameters = {i['key']: i['value'] for i in body}
+            return {i['key']: i['value'] for i in body}
 
         elif body and mode == 'raw':
-            parameters = json.loads(body)
+            return json.loads(body)
 
         else:
             stderr.write('Unsupported mode: {}\n'.format(mode))
             sys.exit(1)
 
+    @property
+    def body_parameters(self):
         return [
             {
                 'name': k,
@@ -111,8 +114,122 @@ class CollectionRequest(AttrDict):
                 'required': False,
                 'type': get_type(v)
             }
-            for k, v in parameters.items()
+            for k, v in self.body_dict.items()
         ]
+
+    @property
+    def examples(self):
+
+        if self.output_format == 'html':
+            example = '<h3>Request</h3>\n'
+        else:
+            example = 'Request:\n\n'
+
+        if self.output_format == 'html':
+            example += '<pre>\n'
+
+        example += '{} {} HTTP/1.1\n'.format(
+            self.method,
+            self.path
+        )
+        example += 'Authorization: {}\n'.format(
+            self.get_header('Authorization')
+        )
+        example += 'Cotent-Type: {}\n'.format(
+            self.get_header('Content-Type')
+        )
+        example += '\n'
+        if self.body_dict:
+            example += '{}\n'.format(json.dumps(self.body_dict, indent=2))
+
+        if self.output_format == 'html':
+            example += '</pre>\n'
+        else:
+            example += '\n'
+
+        if self.output_format == 'html':
+            example += '<h3>Response</h3>\n'
+        else:
+            example += 'Response:\n\n'
+
+        if self.output_format == 'html':
+            example += '<pre>\n'
+
+        example += 'HTTP/1.1 {} {}\n'.format(
+            self.response.code,
+            self.response.status
+        )
+
+        content_type = self.get_response_header('Content-Type')
+        if content_type:
+            example += 'Cotent-Type: {}\n'.format(content_type)
+
+        example += '\n'
+        if self.response_body:
+            example += '{}\n'.format(json.dumps(self.response_body, indent=2))
+
+        if self.output_format == 'html':
+            example += '</pre>\n'
+
+        return [{
+            (content_type or 'application/json'): example
+        }]
+
+    def get_headers(self, item, to_exclude=EXCL_HEADERS):
+        return {
+            header['key']: header['value']
+            for header in (item.header or [])
+            if header['key'] not in (to_exclude or [])
+        }
+
+    def get_header(self, key):
+        return self.get_headers(self).get(key) or ''
+
+    def get_response_header(self, key):
+        return self.get_headers(self.response).get(key) or ''
+
+    def get_response_property_description(self, name):
+        return ''
+
+    @property
+    def headers(self):
+        return self.get_headers(self)
+
+    @property
+    def path(self):
+        basePath = self.item.collection_parser.basePath
+        for host in self.item.collection_parser._hosts:
+            return self.url.replace('{}{}'.format(host, basePath), '')
+
+    @property
+    def response_body(self):
+
+        if not self.response.body:
+            return {}
+
+        try:
+            body = json.loads(self.response.body) or {}
+        except JSONDecodeError:
+            stderr.write('Invalid body: {}\n'.format(self.response.body))
+            sys.exit(1)
+
+        if isinstance(body, list):
+            body = body[0]
+
+        return body
+
+    @property
+    def response_headers(self):
+        return self.get_headers(self.response)
+
+    @property
+    def response_schema_properties(self):
+        return {
+            k: {
+                'type': get_type(v),
+                'description': self.get_response_property_description(k),
+            } for k, v in self.response_body.items()
+       }
 
 
 class CollectionExecutionRequestList(list):
@@ -124,8 +241,12 @@ class CollectionExecutionRequestList(list):
                     or _exec['item']['request']['method'].lower() != item['request']['method'].lower():  # noqa
                 continue
             self.append(CollectionRequest(
-                dict(_exec['request'],
-                     response=AttrDict(_exec['response']))
+                dict(
+                    _exec['request'],
+                    item=item,
+                    output_format=collection_parser.output_format,
+                    response=AttrDict(_exec['response'])
+                )
             ))
 
     def get_request(self, *codes):
@@ -138,62 +259,12 @@ class CollectionExecutionRequestList(list):
             if request.response.code in codes:
                 return request.response
 
-    def get_response_body(self, response):
-
-        if not response.body:
-            return {}
-
-        try:
-            body = json.loads(response.body) or {}
-        except JSONDecodeError:
-            stderr.write('Invalid body: {}\n'.format(response.body))
-            sys.exit(1)
-
-        if isinstance(body, list):
-            body = body[0]
-
-        return body
-
-    def get_response_examples(self, response):
-
-        content_type = self.get_response_header(response, 'Content-Type')
-        body = self.get_response_body(response)
-
-        return [
-            {
-                content_type: '<pre>{}</pre>'.format(
-                    json.dumps(body, indent=2)
-                )
-            }
-        ]
-
-    def get_response_headers(self, response, to_exclude=None):
-        return {
-            header['key']: header['value']
-            for header in (response.header or [])
-            if header['key'] not in (to_exclude or [])
-        }
-
-    def get_response_header(self, response, key):
-        return self.get_response_headers(response).get(key)
-
-    def get_response_property_description(self, name):
-        return ''
-
-    def get_response_schema_properties(self, response):
-        return {
-            k: {
-                'type': get_type(v),
-                'description': self.get_response_property_description(k),
-            } for k, v in self.get_response_body(response).items()
-       }
-
     @property
     def content_types(self):
-        return list(filter(None, [
-            self.get_response_header(request.response, 'Content-Type')
+        return list(set(filter(None, [
+            request.get_response_header('Content-Type')
             for request in self
-        ]))
+        ])))
 
     @property
     def response(self):
@@ -249,26 +320,15 @@ class CollectionExecutionRequestList(list):
 
         swagger_responses = {}
 
-        for collection_request in self:
+        for request in self:
 
-            response = collection_request.response
-
-            examples = self.get_response_examples(response)
-
-            headers = self.get_response_headers(
-                response,
-                to_exclude=EXCL_HEADERS
-            )
-
-            properties = self.get_response_schema_properties(response)
-
-            swagger_responses[response.code] = {
+            swagger_responses[request.response.code] = {
                 'description': '',
-                'examples': examples,
-                'headers': headers,
+                'examples': request.examples,
+                'headers': request.response_headers,
                 'schema': {
                     'type': 'object',
-                    'properties': properties,
+                    'properties': request.response_schema_properties,
                 },
             }
 
@@ -420,6 +480,7 @@ class CollectionParser(dict):
 
     basePath = '/'
     host = None
+    output_format = None
 
     _executions = None
     _extra_tags = None
@@ -777,6 +838,7 @@ def main():
 
     collection_parser.basePath = args.basePath
     collection_parser.host = args.host
+    collection_parser.output_format = args.output_format
     collection_parser.schemes = args.schemes.split(',')
 
     collection_parser.extra_tags = args.extra_tags.split(',')
