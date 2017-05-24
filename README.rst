@@ -33,7 +33,7 @@ Please just follow the help:
     ~$ swagman -h
     usage: swagman [-h] [-b BASEPATH] [-e ENVIRONMENT] [-f OUTPUT_FORMAT]
                   [-g _GLOBALS] [-H HOST] [-o OUTPUT] [-s SCHEMES]
-                  [-t EXTRA_TAGS]
+                  [-t EXTRA_TAGS] [--template TEMPLATE_PATH]
                   input
 
     Convert PostMan Collections to Swagger file.
@@ -62,6 +62,9 @@ Please just follow the help:
       -t EXTRA_TAGS, --extra-tags EXTRA_TAGS
                             Additional tags to be included, ex: "sso,oauth",
                             default: ""
+      --template TEMPLATE_PATH
+                            Path to a template to use for swagger result rendering
+                            (required for html ouput).
 
 
 License
