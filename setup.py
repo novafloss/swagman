@@ -29,14 +29,17 @@ setup(
         'pyyaml',
     ],
     extras_require={
+        'extra': [
+            'jinja2',
+        ],
+        'release': [
+            'wheel',
+            'zest.releaser',
+        ],
         'test': [
             'flake8',
             'pytest',
             'pytest-cov',
-        ],
-        'release': [
-            'wheel',
-            'zest.releaser'
         ],
     },
     py_modules=['swagman'],

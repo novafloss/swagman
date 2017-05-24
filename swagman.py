@@ -16,8 +16,6 @@ import yaml
 
 
 EXCL_HEADERS = [
-    'Allow',
-    'Content-Type',
     'Date',
     'Server',
     'X-Frame-Options',
@@ -116,26 +114,6 @@ class CollectionRequest(AttrDict):
             for k, v in parameters.items()
         ]
 
-    @property
-    def path_parameters(self):
-
-        parameters = self.get('variable') or []
-
-        return [
-            {
-                'name': p['id'],
-                'in': 'path',
-                'description': '',
-                'required': True,
-                'type': get_type(p['value'])
-            }
-            for p in parameters
-        ]
-
-    @property
-    def query_parameters(self):
-        return {}
-
 
 class CollectionExecutionRequestList(list):
 
@@ -162,19 +140,32 @@ class CollectionExecutionRequestList(list):
 
     def get_response_body(self, response):
 
-        if not self.response.body:
+        if not response.body:
             return {}
 
         try:
-            body = json.loads(self.response.body) or {}
+            body = json.loads(response.body) or {}
         except JSONDecodeError:
-            stderr.write('Invalid body: {}\n'.format(self.response.body))
+            stderr.write('Invalid body: {}\n'.format(response.body))
             sys.exit(1)
 
         if isinstance(body, list):
             body = body[0]
 
         return body
+
+    def get_response_examples(self, response):
+
+        content_type = self.get_response_header(response, 'Content-Type')
+        body = self.get_response_body(response)
+
+        return [
+            {
+                content_type: '<pre>{}</pre>'.format(
+                    json.dumps(body, indent=2)
+                )
+            }
+        ]
 
     def get_response_headers(self, response, to_exclude=None):
         return {
@@ -213,6 +204,29 @@ class CollectionExecutionRequestList(list):
         return self.get_request(200, 201, 204)
 
     @property
+    def path_parameters(self):
+
+        if not isinstance(self.item.url, dict):
+            return []
+
+        parameters = self.item.url.get('variable') or []
+
+        return [
+            {
+                'name': p['id'],
+                'in': 'path',
+                'description': '',
+                'required': True,
+                'type': get_type(p['value'])
+            }
+            for p in parameters
+        ]
+
+    @property
+    def query_parameters(self):
+        return {}
+
+    @property
     def swagger_parameters(self):
 
         body_parameters = [
@@ -226,7 +240,7 @@ class CollectionExecutionRequestList(list):
                     continue
                 body_parameters += spec
 
-        path_parameters = self.request.path_parameters
+        path_parameters = self.path_parameters
 
         return body_parameters + path_parameters
 
@@ -239,14 +253,18 @@ class CollectionExecutionRequestList(list):
 
             response = collection_request.response
 
+            examples = self.get_response_examples(response)
+
             headers = self.get_response_headers(
                 response,
                 to_exclude=EXCL_HEADERS
             )
+
             properties = self.get_response_schema_properties(response)
 
             swagger_responses[response.code] = {
                 'description': '',
+                'examples': examples,
                 'headers': headers,
                 'schema': {
                     'type': 'object',
@@ -607,14 +625,45 @@ class Swagger(dict):
             'securityDefinitions': collection_parser.security_definitions,
         })
 
-    def to_file(self, path, output_format='yaml'):
+    def to_file(self, path, output_format='yaml', template_path=None):
         with open(path, 'w') as out_file:
             if output_format == 'yaml':
                 out_file.write(self.to_yaml())
             elif output_format == 'json':
                 out_file.write(self.to_json())
+            elif output_format == 'html':
+                out_file.write(self.to_html(template_path))
             else:
                 pass
+
+    def to_html(self, template_path):
+
+        if not template_path or not os.path.exists(template_path):
+            sys.stderr.write('Template path not found: {}\n'.format(
+                template_path
+            ))
+            sys.exit(1)
+
+        try:
+            import jinja2
+        except ImportError:
+            sys.stderr.write('Missing jinja2 requirement.\n')
+            sys.exit(1)
+
+        template_dir, template_name = os.path.split(
+            os.path.abspath(template_path)
+        )
+
+        jinja_env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(template_dir),
+            lstrip_blocks=True,
+            trim_blocks=True,
+            undefined=jinja2.StrictUndefined,
+        )
+
+        template = jinja_env.get_template(template_name)
+
+        return template.render(**dict(self)).encode('utf-8')
 
     def to_json(self):
         return json.dumps(dict(self), indent=2)
@@ -702,6 +751,15 @@ def parse_args():
         type=str,
     )
 
+    parser.add_argument(
+        '--template',
+        default=None,
+        dest='template_path',
+        help='Path to a template to use for swagger result rendering '
+             '(required for html ouput).',
+        type=str,
+    )
+
     return parser.parse_args()
 
 
@@ -725,7 +783,8 @@ def main():
 
     Swagger.from_collection_parser(collection_parser).to_file(
         args.output,
-        output_format=args.output_format
+        output_format=args.output_format,
+        template_path=args.template_path
     )
 
 if __name__ == "__main__":
