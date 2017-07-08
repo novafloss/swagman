@@ -512,7 +512,7 @@ class CollectionItemParser(dict):
             self._url = url.replace(
                 '{}{}'.format(host, self.collection_parser.basePath),
                 ''
-            )
+            ).split('?')[0]
             return self._url
 
 
