@@ -106,16 +106,39 @@ class CollectionRequest(AttrDict):
 
     @property
     def body_parameters(self):
-        return [
-            {
-                'name': k,
+
+        body_parameters = []
+        required = self.item.method in ['post', 'put']
+
+        if 'application/x-www-form-urlencoded' in self.item.consumes:
+            body_parameters += [
+                {
+                    'name': k,
+                    'in': 'formData',
+                    'description': '',
+                    'required': required,
+                    'type': get_type(v)
+                }
+                for k, v in self.body_dict.items()
+            ]
+
+        if any(c.startswith('application/json')
+               for c in self.item.consumes):
+
+            body_parameters.append({
+                'name': 'body',
                 'in': 'body',
                 'description': '',
-                'required': False,
-                'type': get_type(v)
-            }
-            for k, v in self.body_dict.items()
-        ]
+                'required': required,
+                'schema': {
+                    k: {
+                        'type': get_type(v),
+                        'description': '',
+                    } for k, v in self.body_dict.items()
+                }
+            })
+
+        return body_parameters
 
     @property
     def examples(self):
@@ -204,11 +227,11 @@ class CollectionRequest(AttrDict):
     @property
     def response_body(self):
 
-        if not self.response.body:
+        if 'body' not in self.response:
             return {}
 
         try:
-            body = json.loads(self.response.body) or {}
+            body = json.loads(self.response.body or '{}')
         except JSONDecodeError:
             stderr.write('Invalid body: {}\n'.format(self.response.body))
             sys.exit(1)
@@ -253,11 +276,13 @@ class CollectionExecutionRequestList(list):
         for request in self:
             if request.response.code in codes:
                 return request
+        return {}
 
     def get_response(self, *codes):
         for request in self:
             if request.response.code in codes:
                 return request.response
+        return {}
 
     @property
     def content_types(self):
@@ -302,14 +327,14 @@ class CollectionExecutionRequestList(list):
 
         body_parameters = [
             dict(p, required=True)
-            for p in self.request.body_parameters
+            for p in (self.request.get('body_parameters') or [])
         ]
 
         for request in self:
             for param in request.body_parameters:
                 if any(param['name'] == p['name'] for p in body_parameters):
                     continue
-                body_parameters += spec
+                body_parameters.append(param)
 
         path_parameters = self.path_parameters
 
