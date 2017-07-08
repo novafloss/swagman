@@ -320,7 +320,24 @@ class CollectionExecutionRequestList(list):
 
     @property
     def query_parameters(self):
-        return {}
+
+        parts = self.item.url.split('?')
+
+        if len(parts) < 2:
+            return []
+
+        params = dict([i.split('=') for i in parts[1].split('&')])
+
+        return [
+            {
+                'name': k,
+                'in': 'query',
+                'description': '',
+                'required': False,
+                'type': get_type(v)
+            }
+            for k, v in params.items()
+        ]
 
     @property
     def swagger_parameters(self):
@@ -337,8 +354,9 @@ class CollectionExecutionRequestList(list):
                 body_parameters.append(param)
 
         path_parameters = self.path_parameters
+        query_parameters = self.query_parameters
 
-        return body_parameters + path_parameters
+        return body_parameters + path_parameters + query_parameters
 
     @property
     def swagger_responses(self):
