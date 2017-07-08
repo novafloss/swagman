@@ -4,7 +4,9 @@ Changelog
 0.3 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Handle formData and body parameter properly
+- Parse query parameters
+- Clean urls with query
 
 
 0.2 (2017-05-24)
