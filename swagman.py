@@ -572,7 +572,15 @@ class CollectionParser(dict):
         self._security = {}
         self._security_definitions = {}
 
+        collection_items = []
+
         for item in self.get('item', []):
+            if 'item' in item:
+                collection_items += item['item']
+            else:
+                collection_items.append(item)
+
+        for item in collection_items:
 
             item_parser = CollectionItemParser(self, item)
 
