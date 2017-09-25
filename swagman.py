@@ -101,8 +101,7 @@ class CollectionRequest(AttrDict):
             return json.loads(body)
 
         else:
-            stderr.write('Unsupported mode: {}\n'.format(mode))
-            sys.exit(1)
+            return {}
 
     @property
     def body_parameters(self):
@@ -233,7 +232,7 @@ class CollectionRequest(AttrDict):
         try:
             body = json.loads(self.response.body or '{}')
         except JSONDecodeError:
-            stderr.write('Invalid body: {}\n'.format(self.response.body))
+            sys.stderr.write('Invalid body: {}\n'.format(self.response.body))
             sys.exit(1)
 
         if isinstance(body, list):
@@ -429,7 +428,7 @@ class CollectionItemParser(dict):
     def method(self):
         method = self.get('request', {}).get('method')
         if not method:
-            stderr.write('Missing request method\n')
+            sys.stderr.write('Missing request method\n')
             sys.exit(1)
         return method.lower()
 
@@ -548,7 +547,7 @@ class CollectionParser(dict):
     @executions.setter
     def executions(self, executions):
         if not isinstance(executions, list):
-            stderr.write('Invalid report executions\n')
+            sys.stderr.write('Invalid report executions\n')
             sys.exit(1)
         self._executions = executions
 
@@ -559,7 +558,7 @@ class CollectionParser(dict):
     @extra_tags.setter
     def extra_tags(self, extra_tags):
         if not isinstance(extra_tags, list):
-            stderr.write('Invalid extra tags\n')
+            sys.stderr.write('Invalid extra tags\n')
             sys.exit(1)
         self._extra_tags = extra_tags
 
@@ -573,7 +572,15 @@ class CollectionParser(dict):
         self._security = {}
         self._security_definitions = {}
 
+        collection_items = []
+
         for item in self.get('item', []):
+            if 'item' in item:
+                collection_items += item['item']
+            else:
+                collection_items.append(item)
+
+        for item in collection_items:
 
             item_parser = CollectionItemParser(self, item)
 
@@ -642,7 +649,7 @@ class CollectionParser(dict):
     @schemes.setter
     def schemes(self, schemes):
         if not isinstance(schemes, list):
-            stderr.write('Invalid schemes list\n')
+            sys.stderr.write('Invalid schemes list\n')
             sys.exit(1)
         self._schemes = schemes
 
