@@ -101,8 +101,7 @@ class CollectionRequest(AttrDict):
             return json.loads(body)
 
         else:
-            stderr.write('Unsupported mode: {}\n'.format(mode))
-            sys.exit(1)
+            return {}
 
     @property
     def body_parameters(self):
