@@ -4,7 +4,9 @@ Changelog
 0.4 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Handle collection items of items
+- Fix sys.stderr typo
+- Allow empty request body
 
 
 0.3 (2017-07-08)
