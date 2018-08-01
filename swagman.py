@@ -229,6 +229,8 @@ class CollectionRequest(AttrDict):
 
     @property
     def path(self):
+        if isinstance(self.url, dict):
+            return '/{}'.format('/'.join(self.url.get('path') or []))
         basePath = self.item.collection_parser.basePath
         for host in self.item.collection_parser._hosts:
             return self.url.replace('{}{}'.format(host, basePath), '')
