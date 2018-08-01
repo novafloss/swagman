@@ -77,13 +77,23 @@ class CollectionContext(dict):
 
 class AttrDict(dict):
 
-   def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
+    defaults = None
+
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(
+            *args,
+            **dict(kwargs, **(self.defaults or {}))
+        )
         self.__dict__ = self
 
 
 class CollectionRequest(AttrDict):
 
+    defaults = {
+        'description': {
+            'content': '',
+        },
+    }
 
     @property
     def body_dict(self):
