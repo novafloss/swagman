@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.5 (unreleased)
+0.5 (2018-11-29)
 ----------------
 
 - Handle dict like request url
