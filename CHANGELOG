@@ -4,7 +4,8 @@ Changelog
 0.5 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Handle dict like request url
+- Make item description optional
 
 
 0.4 (2017-09-25)

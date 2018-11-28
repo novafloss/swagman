@@ -221,7 +221,10 @@ class CollectionRequest(AttrDict):
     def path(self):
         basePath = self.item.collection_parser.basePath
         for host in self.item.collection_parser._hosts:
-            return self.url.replace('{}{}'.format(host, basePath), '')
+            if isinstance(self.url, dict):
+                return '/'.join(self.url['path']).replace(basePath[1:], '')
+            else:
+                return self.url.replace('{}{}'.format(host, basePath), '')
 
     @property
     def response_body(self):
@@ -407,7 +410,7 @@ class CollectionItemParser(dict):
 
     @property
     def description(self):
-        return self.request.description.get('content')
+        return self.request.get('description', {}).get('content')
 
     @property
     def execution_requests(self):
