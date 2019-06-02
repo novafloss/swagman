@@ -396,7 +396,7 @@ class CollectionItemParser(dict):
         if self._auth_header:
             return self._auth_header
 
-        for header in self.request.header:
+        for header in (self.request.header if hasattr(self.request, 'header') else []):
             if header['key'] != 'Authorization'\
                     or not header['value'].startswith('Bearer '):
                 continue
@@ -424,7 +424,7 @@ class CollectionItemParser(dict):
     def header(self):
         return {
             h['key']:h['value']
-            for h in (self.request.header or [])
+            for h in (self.request.header if hasattr(self.request, 'header') else [])
         }
 
     @property
