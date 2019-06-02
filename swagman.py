@@ -490,8 +490,9 @@ class CollectionItemParser(dict):
 
     @property
     def tags(self):
-        tags = [t for t in self.url.split('/')[1:] if not t.startswith(':')]
-        return list(sorted(self.collection_parser.extra_tags + tags))
+        tags = [t for t in self.url.split('/')[1:] if not (t.startswith(':') or t.startswith('{') or t.endswith('}'))]
+        # Tags should not have duplicate items, see https://swagger.io/specification/v2/
+        return list({i for i in sorted(self.collection_parser.extra_tags + tags) if i})
 
     @property
     def url(self):
