@@ -12,6 +12,11 @@ try:
 except ImportError:
     JSONDecodeError = KeyError
 
+try:
+    import httplib
+except ImportError:
+    import http.client as httplib
+
 import yaml
 
 
@@ -193,22 +198,23 @@ class CollectionRequest(AttrDict):
         if self.output_format == 'html':
             example += '</pre>\n'
 
-        return [{
+        return {
             (content_type or 'application/json'): example
-        }]
+        }
 
     def get_headers(self, item, to_exclude=EXCL_HEADERS):
         return {
-            header['key']: header['value']
+            header['key']: {'type': get_type(header['value']), 'description': header['value']}
             for header in (item.header or [])
             if header['key'] not in (to_exclude or [])
         }
 
     def get_header(self, key):
-        return self.get_headers(self).get(key) or ''
+        known_headers = self.get_headers(self).get(key)
+        return known_headers.get('description', '') if isinstance(known_headers, dict) else ''
 
     def get_response_header(self, key):
-        return self.get_headers(self.response).get(key) or ''
+        return self.get_headers(self.response).get(key).get('description', '')
 
     def get_response_property_description(self, name):
         return ''
@@ -368,7 +374,7 @@ class CollectionExecutionRequestList(list):
         for request in self:
 
             swagger_responses[request.response.code] = {
-                'description': '',
+                'description': httplib.responses.get(request.response.code, ''),
                 'examples': request.examples,
                 'headers': request.response_headers,
                 'schema': {
@@ -537,7 +543,7 @@ class CollectionParser(dict):
     @property
     def _hosts(self):
         if not self.host:
-            return[]
+            return []
         return ['{}://{}'.format(s, self.host) for s in self.schemes]
 
     @property
@@ -603,7 +609,7 @@ class CollectionParser(dict):
 
             paths[item_parser.url][item_parser.method] = {
                 'consumes': consumes,
-                'description': item_parser.description,
+                'description': item_parser.description or '',
                 'operationId': item_parser.operationId,
                 'produces': produces,
                 'parameters': item_parser.parameters,
