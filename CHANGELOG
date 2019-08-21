@@ -4,7 +4,7 @@ Changelog
 0.6 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix py3 unicode error
 
 
 0.5 (2018-11-29)
