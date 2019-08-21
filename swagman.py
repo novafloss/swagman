@@ -774,7 +774,7 @@ class Swagger(dict):
 
         template = jinja_env.get_template(template_name)
 
-        return template.render(**dict(self)).encode('utf-8')
+        return template.render(**dict(self))
 
     def to_json(self):
         return json.dumps(dict(self), indent=2)
